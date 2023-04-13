@@ -1,7 +1,321 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 4 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Mesh Editor</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2017</h1>
+<h1 align="middle">Project 4: Cloth Simulator</h1>
+<h2 align="middle">Preston Niayesh, Neel Ayon Sen</h2>
+<h2>Link to project: <a href="https://prestonniayesh.github.io/proj-webpage-template/proj4/index.html">https://prestonniayesh.github.io/proj-webpage-template/proj4/index.html</a></h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+<p>In this project we implemented a cloth simulation system, and accompanying shaders for the cloth and environment.
+In Part 1, we implemented the grid for the pointmasses and springs that belong to our cloth.
+In Part 2, we implemented the physics and physical formulas for each of the springs' interactions with the point masses in the grid system, and used Verlet integration to update the position of each of the pointmasses from frame to frame. We also implemented a constraint system for how much each point mass is allowed to move from one frame to the next in order to avoid deformities and weird behavior in our system.
+In Part 3, we implemented the cloth's collision physics with other objects, namely planes and spheres.
+In Part 4, we implemented self-collision capability, so that the cloth would be able to fold over itself in a realistic manner.
+In Part 5, we implemented various shaders to accompany our cloth simulations with cool lighting, textures, and bumps and grooves on the textures.
+It was interesting to learn about the physics behind how cloths work and how many springs interact with each other at once. It was also interesting to discover the contraint methods that accompany the pure physics in order to obtain the most realistic visuals. It's interesting to think about how our simulations just involved setting different xyz coordinates based on interactions within our environment, since this is much different from how we think about placing objects in real life.</p>
+
+<h2 align="middle">Part I: Masses and springs</h2>
+    <h3>Different viewing angles of scene/pinned2.json</h3>
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/viewingAngle.png" align="middle" width="400px"/>
+                </td>
+                <td>
+                    <img src="images/viewingAngle2.png" align="middle" width="400px"/>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+    <h3>Varying contraints</h3>
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/noShearing.png" align="middle" width="400px"/>
+                    <figcaption>Without any shearing constraints</figcaption>
+                </td>
+                <td>
+                    <img src="images/onlyShearing.png" align="middle" width="400px"/>
+                    <figcaption>With only shearing constraints</figcaption>
+                </td>
+                <td>
+                    <img src="images/viewingAngle.png" align="middle" width="400px"/>
+                    <figcaption>With all constraints</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+
+<h2 align="middle">Part II: Simulation via numerical integration</h2>
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/Part%202/Low%20ks.png" align="middle" width="400px"/>
+                    <figcaption>Low ks</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%202/High%20ks.png" align="middle" width="400px"/>
+                    <figcaption>High ks</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/Part%202/Low%20density.png" align="middle" width="400px"/>
+                    <figcaption>Low density</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%202/High%20density.png" align="middle" width="400px"/>
+                    <figcaption>High density</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/Part%202/Low%20damping.png" align="middle" width="400px"/>
+                    <figcaption>Low damping</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%202/High%20damping.png" align="middle" width="400px"/>
+                    <figcaption>High damping</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/Part%202/Normal%20ks,%20density.png" align="middle" width="400px"/>
+                    <figcaption>Normal ks</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%202/Pinned4%20resting%20state.png" align="middle" width="400px"/>
+                    <figcaption>Resting state</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+    <p>The difference between a high spring constant and a low spring constant is that it maintains the form of a sheet a lot better. A low spring constant has a lot of rippling even after the pinned sheet has been fully dropped, while a high spring constant gives the appearance of a flat sheet.
+        <br>
+        There isn’t a huge difference between the sheet having a high and a low density. Something I noticed is that the high density goes down slightly faster and once it reached its resting position it doesn’t move as much (makes sense because I would assume it has greater inertia). It also appears to fold more as per the attached screenshots.
+        <br>
+        Low damping results in the sheet crumpling significantly as it constantly tries to fold upon itself. High damping gives the effect of having a high spring constant, where the sheet isn’t crumpled at all. We can also see from the screenshot that it takes a lot longer to get to a resting state from low damping as compared to high damping.</p>
+
+<h2 align="middle">Part III: Handling collisions with other objects</h2>
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/defaultKs5000.png" align="middle" width="400px"/>
+                    <figcaption>Default ks = 5000</figcaption>
+                </td>
+                <td>
+                    <img src="images/ks500.png" align="middle" width="400px"/>
+                    <figcaption>ks = 500</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/ks50000.png" align="middle" width="400px"/>
+                    <figcaption>Default ks = 50000</figcaption>
+                </td>
+                <td>
+                    <img src="images/plane.png" align="middle" width="400px"/>
+                    <figcaption>On the plane</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+    <p>When ks = 500, the cloth gets more sucked into the sphere and has more folds over top itself. When ks = 50000, the cloth
+    hardly sucks into the sphere, and instead it has a floaty appearance and fold over top itself much less. With the default
+    ks = 5000, it is an intermediate between the two extremes.</p>
+
+<h2 align="middle">Part IV: Handling self-collisions</h2>
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/Part%204/Initial%20Position.png" align="middle" width="400px"/>
+                    <figcaption>Initial Position</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%204/Start%20collision.png" align="middle" width="400px"/>
+                    <figcaption>Start Collision</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/Part%204/Mid%20collision.png" align="middle" width="400px"/>
+                    <figcaption>Mid Collision</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%204/End%20collision.png" align="middle" width="400px"/>
+                    <figcaption>End Collision</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/Part%204/Low%20density.png" align="middle" width="400px"/>
+                    <figcaption>Low density</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%204/High%20density.png" align="middle" width="400px"/>
+                    <figcaption>High density</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/Part%204/Low%20ks.png" align="middle" width="400px"/>
+                    <figcaption>Low ks</figcaption>
+                </td>
+                <td>
+                    <img src="images/Part%204/High%20ks.png" align="middle" width="400px"/>
+                    <figcaption>High ks</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+
+    <p>With a high density, the cloth crumples almost immediately and it takes a long time to come to rest as compared to a low density. With a low density we can see the cloth ripple while standing up as it takes a lot longer for it to start folding over.
+        <br>
+        In terms of the spring constant, the folds are a lot more pronounced with a high spring constant, while a low spring constant creates a more compact cloth. The crumpling also is concentrated at the bottom, as the middle-top parts of the cloth simply fall down uniformly. This is not the case for a high spring constant as the entire cloth ripples.</p>
+
+<h2 align="middle">Part V: Handling collisions with other objects</h2>
+    <h3>Shader program + vertex and fragment shaders</h3>
+    <p>A shader program is a specialized piece of code that runs on the graphics processing unit (GPU) and is used to process and manipulate the appearance of 3D objects in real-time, primarily focusing on rendering aspects such as lighting, shading, and material effects. Shader programs are essential components of modern graphics pipelines, allowing developers to achieve impressive visual effects and realism in their applications.<br>
+        There are two main types of shaders that work together in a shader program: vertex shaders and fragment shaders.<br>
+        1. Vertex Shaders: These shaders process individual vertices of a 3D object, performing transformations and calculations on their attributes, such as position, color, texture coordinates, and normal vectors. The primary purpose of vertex shaders is to transform 3D coordinates from the object's local space to the final screen space, taking into account the camera's view and projection matrices. Additionally, vertex shaders can be used to manipulate vertex attributes for various effects, such as animating the object, applying vertex-based lighting, or modifying the object's shape.<br>
+        2. Fragment Shaders: Also known as pixel shaders, these shaders operate on individual fragments (potential pixels) generated by the rasterization process. Fragment shaders determine the final color and depth values of each fragment, taking into account various factors such as textures, materials, and lighting. They enable complex visual effects like per-pixel lighting, bump mapping, reflections, and shadows.<br>
+        The vertex and fragment shaders work together in the following manner:<br>
+        1. The vertex shader processes each vertex of the 3D object, calculating its position in screen space and modifying its attributes as required.<br>
+        2. The rasterizer takes the output from the vertex shader and generates fragments, which are potential pixels on the screen, by interpolating vertex attributes across the 3D object's surfaces.<br>
+        3. The fragment shader processes each fragment, using the interpolated attributes to compute the final color and depth values. This step involves applying textures, materials, and lighting calculations to create the desired visual effects.<br>
+        4. The resulting fragment colors and depths are combined and written to the frame buffer, which is then displayed on the screen.<br>
+    <h3>Blinn-Phong shading model</h3>
+    <p>The Blinn-Phong shading model is a widely-used technique in computer graphics to approximate light interaction with 3D objects for realistic appearance. It extends the Phong shading model, offering a more computationally efficient alternative.
+        Blinn-Phong considers three components of light interaction: ambient, diffuse, and specular reflection.<br>
+        1. Ambient Reflection: Represents uniformly scattered environmental light, providing a minimum level of illumination.<br>
+        2. Diffuse Reflection: Simulates light scattering on rough or matte surfaces, with intensity based on the angle between the light source and surface normal.<br>
+        3. Specular Reflection: Models shiny highlights on glossy surfaces. Blinn-Phong introduces the "halfway vector" concept for efficient calculation of specular intensity based on the viewer's direction, light source direction, and surface normal.<br></p>
+
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/ambient.png" align="middle" width="400px"/>
+                    <figcaption>Only ambient</figcaption>
+                </td>
+                <td>
+                    <img src="images/diffuse.png" align="middle" width="400px"/>
+                    <figcaption>Only diffuse</figcaption>
+                </td>
+                <td>
+                    <img src="images/specular.png" align="middle" width="400px"/>
+                    <figcaption>Only specular</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/entirePhong.png" align="middle" width="400px"/>
+                    <figcaption>Entire Phong model</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+
+    <h3>Custom texture</h3>
+    <img src="images/customTexture.png" align="middle" width="400px"/>
+
+    <h3>Bump and displacement mapping</h3>
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/bump.png" align="middle" width="400px"/>
+                    <figcaption>Bump mapping</figcaption>
+                </td>
+                <td>
+                    <img src="images/displacement.png" align="middle" width="400px"/>
+                    <figcaption>Displacement mapping</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/entirePhong.png" align="middle" width="400px"/>
+                    <figcaption>Entire Phong model</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+
+    <p> Bump mapping simulates surface relief using normal perturbations, affecting only lighting calculations, without altering the actual geometry. It creates an illusion of depth. Displacement mapping, on the other hand, modifies the actual geometry by displacing vertices along the surface normal, resulting in true depth and more accurate silhouettes. While bump mapping is computationally cheaper, displacement mapping produces more realistic results at the cost of increased complexity.<br>
+    This described difference can be seen in the resulting renders, where bump mapping looks like the surface is slightly higher in some places than others, and displacement mapping render has much more exaggerated differences in depth visually because the actual geometry is altered.</p>
+
+    <div align="middle">
+        <table style="width:100%">
+            <tr align="center">
+                <td>
+                    <img src="images/bump16.png" align="middle" width="400px"/>
+                    <figcaption>Bump with -o 16 -a 16</figcaption>
+                </td>
+                <td>
+                    <img src="images/bump128.png" align="middle" width="400px"/>
+                    <figcaption>Bump with -o 128 -a 128</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/displacement16.png" align="middle" width="400px"/>
+                    <figcaption>Displacement with -o 16 -a 16</figcaption>
+                </td>
+                <td>
+                    <img src="images/displacement16.png" align="middle" width="400px"/>
+                    <figcaption>Displacement with -o 128 -a 128</figcaption>
+                </td>
+            </tr>
+            <br>
+        </table>
+    </div>
+    <p>Changing the spheres coarseness has hardly any noticable effect on the bump mapping, and the sphere still looks pretty good in both renders, with -o 128 -a 128 slightly improving the look of the bumps aligning with the texture. However, in displacement mapping, there is quite a big difference between the two renders. In -o 16 -a 16, it looks like the bumps are quite pronounced, but they do not align with the texture very well. In -o 128 -a 128 on the other hand, the displacements and bumps in the sphere seem to align exactly with the grooves in the texture, ultimately resulting in the best looking render.</p>
+
+    <h3>Mirror shader</h3>
+    <img src="images/mirror.png" align="middle" width="400px"/>
+
+    <h3>Custom toon shader</h3>
+    <img src="images/customShader.png" align="middle" width="400px"/>
+    <p>In this custom toon shader, we calculated the light intensity using Lambert's cosine law. We set 4 thresholds for the light intensity, and the higher the threshold that the intesity belongs too, the brighter shade of green the resulting color is. These non-smooth differences in coloring from light to dark result in a very cartoonish looking shader.</p>
+</body>
 </html>
